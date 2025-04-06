@@ -6,35 +6,19 @@ import re
 
 # === 설정 ===
 MODEL_NAME = "mistral"
-SAVE_DIR = "posts"  # 👉 저장 폴더 이름
+SAVE_DIR = "posts"
+PROMPT_FILE = "prompt_template.txt"
 
 # === LangChain LLM 설정 (Ollama 연결) ===
 llm = Ollama(model=MODEL_NAME, temperature=0.8)
 
-# === 프롬프트 템플릿 ===
-template = """
-You are a Korean health content creator writing expert-level, yet friendly blog posts.
+# === 프롬프트 템플릿 로드 ===
+def load_prompt_template(filepath: str) -> PromptTemplate:
+    with open(filepath, "r", encoding="utf-8") as f:
+        template_str = f.read()
+    return PromptTemplate.from_template(template_str)
 
-Please write a blog post in **markdown format** based on the topic below.
-
-Topic: "{topic}"
-
-**Structure:**
-1. 일상생활에서 이 주제와 관련해 발생할 수 있는 건강 문제
-2. 이러한 문제가 이어질 수 있는 질병이나 증상
-3. 이를 예방하거나 관리하는 방법 (예: 생활 습관, 운동, 음식 등)
-
-**Style Requirements:**
-- Language: Korean
-- Tone: 친절하고 쉽게 설명하지만 신뢰감 있는 말투
-- Include: 제목, 간단한 소개글, 부제목 포함 각 섹션 설명
-- Markdown 사용: `#`, `##`, `-` 등 마크다운 요소 적극 활용
-- 부가적으로 표나 코드블럭, 리스트 등이 유용하면 포함
-
-Avoid repeating the topic too often, and ensure the flow feels natural and well-structured.
-"""
-
-prompt = PromptTemplate.from_template(template)
+prompt = load_prompt_template(PROMPT_FILE)
 
 # === 응답 후처리 ===
 def clean_output(text: str) -> str:
