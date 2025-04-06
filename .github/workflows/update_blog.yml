@@ -1,49 +1,38 @@
-name: Update Blog Posts
+name: Publish to Velog
 
 on:
   push:
     branches:
       - main
-  schedule:
-    - cron: '0 0 * * *'   # 매일 한국 기준 오전 9시
-    - cron: '0 15 * * *'  # 매일 자정 (한국 기준)
 
 jobs:
-  update_blog:
+  publish_to_velog:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout this repo (스크립트 있는 저장소)
+    - name: Checkout this repo (velog-posts가 있는 저장소)
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-
-    - name: Install dependencies
+    - name: Set up Git
       run: |
-        pip install -r requirements.txt
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Clone Velog repo
+    - name: Clone Velog GitHub Repo
       run: |
         git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/wjdalsdk70/velog.git velog-blog
 
-    - name: Run blog generation script
-      env:
-        VELOG_REPO_PATH: ${{ github.workspace }}/velog-blog
+    - name: Copy .md files to Velog repo
       run: |
-        python scripts/update_blog.py
+        cp velog-posts/*.md velog-blog/ || echo "No posts to copy"
 
-    - name: Commit and push to Velog repo
+    - name: Commit and push
       run: |
         cd velog-blog
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add .
         if git diff-index --quiet HEAD; then
           echo "🟡 No changes to commit"
         else
-          git commit -m "🔄 Update blog post via GitHub Actions"
+          git commit -m "🚀 Publish posts to Velog"
           git push origin main
         fi
