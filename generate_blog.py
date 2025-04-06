@@ -4,12 +4,9 @@ import datetime
 import os
 import re
 
-from push_to_velog import push_to_velog
-
 # === 설정 ===
 MODEL_NAME = "mistral"
-SAVE_DIR = "generated_articles"
-VELOG_REPO_PATH = "/Users/ijeongmin/dev/velog"  # 👉 너의 velog Git 저장소 경로로 수정해줘!
+SAVE_DIR = "posts"  # 👉 저장 폴더 이름
 
 # === LangChain LLM 설정 (Ollama 연결) ===
 llm = Ollama(model=MODEL_NAME, temperature=0.8)
@@ -54,7 +51,7 @@ def save_markdown(content: str, topic: str) -> str:
     filename = f"{SAVE_DIR}/{date_str}-{safe_topic}.md"
     with open(filename, "w", encoding="utf-8") as f:
         f.write(content)
-    print(f"✅ 저장 완료: {filename}")
+    print(f"✅ 로컬에 저장 완료: {filename}")
     return filename
 
 # === 실행 ===
@@ -64,10 +61,4 @@ if __name__ == "__main__":
     print("✏️ LangChain을 통해 글 생성 중...\n")
     result = llm.invoke(final_prompt)
     cleaned = clean_output(result)
-
-    local_md_path = save_markdown(cleaned, topic)
-    push_to_velog(
-        local_md_path=local_md_path,
-        velog_repo_path=VELOG_REPO_PATH,
-        commit_message=f"Add blog: {topic}"
-    )
+    save_markdown(cleaned, topic)
