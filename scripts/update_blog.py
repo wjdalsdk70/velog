@@ -1,45 +1,60 @@
 import feedparser
 import git
 import os
+import re
+from datetime import datetime
 
-# 벨로그 RSS 피드 URL
-# example : rss_url = 'https://api.velog.io/rss/@rimgosu'
+# === 설정 ===
 rss_url = 'https://api.velog.io/rss/@wjdalsdk70'
-
-# 깃허브 레포지토리 경로
-repo_path = '.'
-
-# 'velog-posts' 폴더 경로
+repo_path = os.getenv("VELOG_REPO_PATH", '.')  # GitHub Actions용 환경변수 사용 가능
 posts_dir = os.path.join(repo_path, 'velog-posts')
 
-# 'velog-posts' 폴더가 없다면 생성
-if not os.path.exists(posts_dir):
-    os.makedirs(posts_dir)
+# === 폴더 준비 ===
+os.makedirs(posts_dir, exist_ok=True)
 
-# 레포지토리 로드
+# === 깃 저장소 로드 ===
 repo = git.Repo(repo_path)
 
-# RSS 피드 파싱
+# === RSS 파싱 ===
 feed = feedparser.parse(rss_url)
 
-# 각 글을 파일로 저장하고 커밋
+# === 글 저장 및 커밋 ===
+def sanitize_filename(name: str) -> str:
+    name = re.sub(r'[\\/:*?"<>|]', '_', name)  # 윈도우에서 불가한 문자 제거
+    return name.strip()
+
 for entry in feed.entries:
-    # 파일 이름에서 유효하지 않은 문자 제거 또는 대체
-    file_name = entry.title
-    file_name = file_name.replace('/', '-')  # 슬래시를 대시로 대체
-    file_name = file_name.replace('\\', '-')  # 백슬래시를 대시로 대체
-    # 필요에 따라 추가 문자 대체
-    file_name += '.md'
+    title = entry.title
+    file_name = sanitize_filename(title) + '.md'
     file_path = os.path.join(posts_dir, file_name)
 
-    # 파일이 이미 존재하지 않으면 생성
     if not os.path.exists(file_path):
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(entry.description)  # 글 내용을 파일에 작성
+        # 날짜 포맷 파싱 (RFC822 → ISO8601)
+        date = datetime(*entry.published_parsed[:6]).isoformat()
 
-        # 깃허브 커밋
+        # YAML Frontmatter 생성
+        frontmatter = f"""---
+title: "{title}"
+date: {date}
+tags: []
+---
+
+"""
+
+        # 파일 저장
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(frontmatter + entry.description)
+
+        # Git 작업
         repo.git.add(file_path)
-        repo.git.commit('-m', f'Add post: {entry.title}')
+        repo.index.commit(f"Add post: {title}")
+        print(f"✅ 저장 및 커밋: {file_name}")
+    else:
+        print(f"🔹 이미 존재함: {file_name}")
 
-# 변경 사항을 깃허브에 푸시
-repo.git.push()
+# === 푸시 ===
+try:
+    repo.remote(name='origin').push()
+    print("🚀 GitHub 푸시 완료")
+except Exception as e:
+    print(f"❌ 푸시 실패: {e}")
