@@ -1,4 +1,4 @@
-from generate_blog import generate_blog
+from blog.generate_blog import generate_blog
 from upload_to_notion import upload_markdown
 
 if __name__ == "__main__":
